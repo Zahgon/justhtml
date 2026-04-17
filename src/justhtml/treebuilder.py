@@ -212,29 +212,7 @@ class TreeBuilder(TreeBuilderModesMixin):
         pass
 
     def finish(self) -> Node:
-        if self.fragment_context is not None:
-            # For fragments, remove the html wrapper and promote its children
-            # Note: html element is always created in fragment setup, so children[0] is always "html"
-            assert self.document.children is not None
-            root = self.document.children[0]
-            context_elem = self.fragment_context_element
-            if context_elem is not None and context_elem.parent is root:
-                for child in list(context_elem.children):
-                    context_elem.remove_child(child)
-                    root.append_child(child)
-                root.remove_child(context_elem)
-            for child in list(root.children):
-                root.remove_child(child)
-                self.document.append_child(child)
-            self.document.remove_child(root)
-
-        # Populate selectedcontent elements per HTML5 spec
-        self._populate_selectedcontent(self.document)
-
-        if self.tokenizer is not None and self.track_tag_spans:  # pragma: no branch
-            self.document._source_html = self.tokenizer.buffer
-
-        return self.document
+        pass
 
     # Insertion mode dispatch ------------------------------------------------
 
@@ -415,64 +393,19 @@ class TreeBuilder(TreeBuilderModesMixin):
         Per HTML5 spec: selectedcontent mirrors the content of the selected option,
         or the first option if none is selected.
         """
-        # Find all select elements
-        selects: list[Any] = []
-        self._find_elements(root, "select", selects)
-
-        for select in selects:
-            # Find selectedcontent element in this select
-            selectedcontent = self._find_element(select, "selectedcontent")
-            if not selectedcontent:
-                continue
-
-            # Find all option elements
-            options: list[Any] = []
-            self._find_elements(select, "option", options)
-
-            # Find selected option or use first one
-            selected_option = None
-            for opt in options:
-                if opt.attrs:
-                    for attr_name in opt.attrs.keys():
-                        if attr_name == "selected":
-                            selected_option = opt
-                            break
-                if selected_option:
-                    break
-
-            if not selected_option:
-                selected_option = options[0]
-
-            # Clone content from selected option to selectedcontent
-            self._clone_children(selected_option, selectedcontent)
+        pass
 
     def _find_elements(self, node: Any, name: str, result: list[Any]) -> None:
         """Find all elements with given name using iterative preorder traversal."""
-        stack: list[Any] = [node]
-        while stack:
-            current = stack.pop()
-            if current.name == name:
-                result.append(current)
-
-            if current.has_child_nodes():
-                stack.extend(reversed(current.children))
+        pass
 
     def _find_element(self, node: Any, name: str) -> Any | None:
         """Find first element with given name using iterative preorder traversal."""
-        stack: list[Any] = [node]
-        while stack:
-            current = stack.pop()
-            if current.name == name:
-                return current
-
-            if current.has_child_nodes():
-                stack.extend(reversed(current.children))
-        return None
+        pass
 
     def _clone_children(self, source: Any, target: Any) -> None:
         """Deep clone all children from source to target."""
-        for child in source.children:
-            target.append_child(child.clone_node(deep=True))
+        pass
 
     def _has_in_scope(self, name: str) -> bool:
         pass

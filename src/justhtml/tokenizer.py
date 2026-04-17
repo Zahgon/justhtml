@@ -106,15 +106,7 @@ class TokenizerOpts:
         fragment context and escape-mode sanitization). Copying avoids mutating
         a caller-provided TokenizerOpts instance.
         """
-        return TokenizerOpts(
-            exact_errors=self.exact_errors,
-            discard_bom=self.discard_bom,
-            emit_bogus_markup_as_text=self.emit_bogus_markup_as_text,
-            initial_state=self.initial_state,
-            initial_rawtext_tag=self.initial_rawtext_tag,
-            scripting_enabled=self.scripting_enabled,
-            xml_coercion=self.xml_coercion,
-        )
+        pass
 
 
 class Tokenizer:
@@ -312,67 +304,7 @@ class Tokenizer:
         self._comment_token = CommentToken("")
 
     def initialize(self, html: str | None) -> None:
-        if html and html[0] == "\ufeff" and self.opts.discard_bom:
-            html = html[1:]
-
-        # Normalize newlines per §13.2.2.5
-        if html:
-            if "\r" in html:
-                html = html.replace("\r\n", "\n").replace("\r", "\n")
-
-        self.buffer = html or ""
-        self.length = len(self.buffer)
-        self.pos = 0
-        self.reconsume = False
-        self.current_char = ""
-        self.last_token_line = 1
-        self.last_token_column = 0
-        self.current_token_start_pos = 0
-        self.last_token_start_pos = None
-        self.errors = []
-        self.text_buffer.clear()
-        self.text_start_pos = 0
-        self.current_tag_name.clear()
-        self.current_tag_attrs = {}
-        self.current_attr_name.clear()
-        self.current_attr_value.clear()
-        self.current_attr_value_has_amp = False
-        self.current_comment.clear()
-        self.current_doctype_name.clear()
-        self.current_doctype_public = None
-        self.current_doctype_system = None
-        self.current_doctype_force_quirks = False
-        self.current_tag_self_closing = False
-        self.current_tag_kind = Tag.START
-        self.rawtext_tag_name = self.opts.initial_rawtext_tag
-        self.temp_buffer.clear()
-        self.last_start_tag_name = None
-        self._tag_token.kind = Tag.START
-        self._tag_token.name = ""
-        self._tag_token.attrs = {}
-        self._tag_token.self_closing = False
-        self._tag_token.start_pos = None
-        self._tag_token.end_pos = None
-
-        initial_state = self.opts.initial_state
-        if isinstance(initial_state, int):
-            self.state = initial_state
-        else:
-            self.state = self.DATA
-
-        # Pre-compute newline positions for O(log n) line lookups.
-        # Only do this when errors are collected or when node locations are requested.
-        if self.collect_errors or self.track_node_locations:
-            self._newline_positions = []
-            pos = -1
-            buffer = self.buffer
-            while True:
-                pos = buffer.find("\n", pos + 1)
-                if pos == -1:
-                    break
-                self._newline_positions.append(pos)
-        else:
-            self._newline_positions = None
+        pass
 
     def _get_line_at_pos(self, pos: int) -> int:
         """Get line number (1-indexed) for a position using binary search."""
@@ -387,8 +319,7 @@ class Tokenizer:
 
     def step(self) -> bool:
         """Run one step of the tokenizer state machine. Returns True if EOF reached."""
-        handler = self._STATE_HANDLERS[self.state]  # type: ignore[attr-defined]
-        return handler(self)  # type: ignore[no-any-return]
+        pass
 
     def run(self, html: str | None) -> None:
         pass

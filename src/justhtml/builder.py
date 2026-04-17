@@ -12,9 +12,7 @@ _ALLOWED_NAMESPACES = {"html", "svg", "math"}
 
 
 def text(value: str) -> Text:
-    if not isinstance(value, str):
-        raise TypeError("text() value must be a string")
-    return Text(value)
+    pass
 
 
 def comment(value: str) -> Comment:

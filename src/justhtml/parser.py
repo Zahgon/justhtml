@@ -357,7 +357,7 @@ class JustHTML:
 
     def query(self, selector: str) -> list[Any]:
         """Query the document using a CSS selector. Delegates to root.query()."""
-        return self.root.query(selector)
+        pass
 
     def query_one(self, selector: str) -> Any | None:
         """Return the first matching descendant for a CSS selector, or None."""
@@ -379,13 +379,7 @@ class JustHTML:
 
         Sanitization (when enabled) happens during construction.
         """
-        return self.root.to_html(
-            indent=0,
-            indent_size=indent_size,
-            pretty=pretty,
-            context=context,
-            quote=quote,
-        )
+        pass
 
     def to_text(
         self,
@@ -395,12 +389,8 @@ class JustHTML:
         separator_blocks_only: bool = False,
     ) -> str:
         """Return the document's concatenated text."""
-        return self.root.to_text(
-            separator=separator,
-            strip=strip,
-            separator_blocks_only=separator_blocks_only,
-        )
+        pass
 
     def to_markdown(self, html_passthrough: bool = False) -> str:
         """Return a GitHub Flavored Markdown representation."""
-        return self.root.to_markdown(html_passthrough=html_passthrough)
+        pass

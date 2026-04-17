@@ -174,14 +174,11 @@ NUMERIC_REPLACEMENTS: dict[int, str] = {
 
 def _is_control_character(codepoint: int) -> bool:
     # C0 controls and C1 controls
-    return (0x00 <= codepoint <= 0x1F) or (0x7F <= codepoint <= 0x9F)
+    pass
 
 
 def _is_noncharacter(codepoint: int) -> bool:
-    if 0xFDD0 <= codepoint <= 0xFDEF:
-        return True
-    last = codepoint & 0xFFFF
-    return last == 0xFFFE or last == 0xFFFF
+    pass
 
 
 def decode_numeric_entity(
@@ -198,26 +195,7 @@ def decode_numeric_entity(
     Returns:
         The decoded character, or None if invalid
     """
-    base = 16 if is_hex else 10
-    codepoint = int(text, base)
-
-    # Invalid ranges per HTML5 spec
-    if codepoint > 0x10FFFF:
-        return "\ufffd"  # REPLACEMENT CHARACTER
-    if 0xD800 <= codepoint <= 0xDFFF:  # Surrogate range
-        return "\ufffd"
-
-    if report_error is not None:
-        if _is_control_character(codepoint):
-            report_error("control-character-reference")
-        if _is_noncharacter(codepoint):
-            report_error("noncharacter-character-reference")
-
-    # Apply HTML5 replacements for certain ranges
-    if codepoint in NUMERIC_REPLACEMENTS:
-        return NUMERIC_REPLACEMENTS[codepoint]
-
-    return chr(codepoint)
+    pass
 
 
 def decode_entities_in_text(
@@ -239,144 +217,4 @@ def decode_entities_in_text(
     Returns:
         Text with entities decoded
     """
-    result: list[str] = []
-    i = 0
-    length = len(text)
-    while i < length:
-        next_amp = text.find("&", i)
-        if next_amp == -1:
-            result.append(text[i:])
-            break
-
-        if next_amp > i:
-            result.append(text[i:next_amp])
-
-        i = next_amp
-        # Look for entity
-        j = i + 1
-
-        # Check for numeric entity
-        if j < length and text[j] == "#":
-            j += 1
-            is_hex = False
-
-            if j < length and text[j] in "xX":
-                is_hex = True
-                j += 1
-
-            # Collect digits
-            digit_start = j
-            if is_hex:
-                while j < length and text[j] in "0123456789abcdefABCDEF":
-                    j += 1
-            else:
-                while j < length and text[j].isdigit():
-                    j += 1
-
-            has_semicolon = j < length and text[j] == ";"
-            digit_text = text[digit_start:j]
-
-            if digit_text:
-                if report_error is not None and not has_semicolon:
-                    report_error("missing-semicolon-after-character-reference")
-                result.append(decode_numeric_entity(digit_text, is_hex=is_hex, report_error=report_error))
-                i = j + 1 if has_semicolon else j
-                continue
-
-            # Invalid numeric entity, keep as-is
-            result.append(text[i : j + 1 if has_semicolon else j])
-            i = j + 1 if has_semicolon else j
-            continue
-
-        # Named entity
-        # Collect alphanumeric characters (entity names are case-sensitive and can include uppercase)
-        while j < length and (text[j].isalpha() or text[j].isdigit()):
-            j += 1
-
-        entity_name = text[i + 1 : j]
-        has_semicolon = j < length and text[j] == ";"
-
-        if not entity_name:
-            result.append("&")
-            i += 1
-            continue
-
-        # Try exact match first (with semicolon expected)
-        if has_semicolon and entity_name in NAMED_ENTITIES:
-            result.append(NAMED_ENTITIES[entity_name])
-            i = j + 1
-            continue
-        # If semicolon present but no exact match, allow legacy prefix match in text
-        if has_semicolon and not in_attribute:
-            best_match: str | None = None
-            best_match_len = 0
-            for k in range(len(entity_name), 0, -1):
-                prefix = entity_name[:k]
-                if prefix in LEGACY_ENTITIES and prefix in NAMED_ENTITIES:
-                    best_match = NAMED_ENTITIES[prefix]
-                    best_match_len = k
-                    break
-            if best_match:
-                if report_error is not None:
-                    report_error("missing-semicolon-after-character-reference")
-                result.append(best_match)
-                i = i + 1 + best_match_len
-                continue
-
-        # Try without semicolon for legacy compatibility
-        # Only legacy entities can be used without semicolons
-        if entity_name in LEGACY_ENTITIES and entity_name in NAMED_ENTITIES:
-            # Legacy entities without semicolon have strict rules in attributes:
-            # don't decode if followed by alphanumeric or '='
-            # Per HTML5 spec §13.2.5.72
-            next_char = text[j] if j < length else None
-            if in_attribute and next_char and (next_char.isalnum() or next_char == "="):
-                result.append("&")
-                i += 1
-                continue
-
-            # Decode legacy entity
-            if report_error is not None and not has_semicolon:
-                report_error("missing-semicolon-after-character-reference")
-            result.append(NAMED_ENTITIES[entity_name])
-            i = j
-            continue
-
-        # Try longest prefix match for legacy entities without semicolon
-        # This handles cases like &notit where &not is valid but &notit is not
-        best_match = None
-        best_match_len = 0
-        for k in range(len(entity_name), 0, -1):
-            prefix = entity_name[:k]
-            if prefix in LEGACY_ENTITIES and prefix in NAMED_ENTITIES:
-                best_match = NAMED_ENTITIES[prefix]
-                best_match_len = k
-                break
-
-        if best_match:
-            # Check legacy entity rules
-            end_pos = i + 1 + best_match_len
-            next_char = text[end_pos] if end_pos < length else None
-            if in_attribute:
-                # In attributes with prefix match, the next char is always alphanumeric
-                # (since entity_name was built from alphanumerics only)
-                # Per HTML5 spec, don't decode if followed by alphanumeric or =
-                result.append("&")
-                i += 1
-                continue
-
-            if report_error is not None:
-                report_error("missing-semicolon-after-character-reference")
-            result.append(best_match)
-            i = i + 1 + best_match_len
-            continue
-
-        # No match found
-        if has_semicolon:
-            result.append(text[i : j + 1])
-            i = j + 1
-        else:
-            result.append("&")
-            i += 1
-
-    return "".join(result)
+    pass

@@ -151,8 +151,7 @@ class UrlPolicy:
 
 
 def _proxy_url_value(*, proxy: UrlProxy, value: str) -> str:
-    sep = "&" if "?" in proxy.url else "?"
-    return f"{proxy.url}{sep}{proxy.param}={quote(value, safe='')}"
+    pass
 
 
 @dataclass(slots=True)
@@ -174,60 +173,13 @@ class UnsafeHandler:
     _errors: list[ParseError] | None = None
 
     def reset(self) -> None:
-        if self.unsafe_handling != "collect":
-            self._errors = None
-            return
-
-        if self.sink is None:
-            self._errors = []
-            return
-
-        # Remove previously collected security findings from the shared sink to
-        # avoid accumulating duplicates across multiple runs.
-        errors = self.sink
-        write_i = 0
-        for e in errors:
-            if e.category == "security":
-                continue
-            errors[write_i] = e
-            write_i += 1
-        del errors[write_i:]
+        pass
 
     def collected(self) -> list[ParseError]:
         pass
 
     def handle(self, msg: str, *, node: Any | None = None) -> None:
-        mode = self.unsafe_handling
-        if mode == "strip":
-            return
-        if mode == "raise":
-            raise UnsafeHtmlError(msg)
-        if mode == "collect":
-            dest = self.sink
-            if dest is None:
-                if self._errors is None:
-                    self._errors = []
-                dest = self._errors
-
-            line: int | None = None
-            column: int | None = None
-            if node is not None:
-                # Best-effort: use node origin metadata when enabled.
-                # This stays allocation-light and avoids any input re-parsing.
-                line = node.origin_line
-                column = node.origin_col
-
-            dest.append(
-                ParseError(
-                    "unsafe-html",
-                    line=line,
-                    column=column,
-                    category="security",
-                    message=msg,
-                )
-            )
-            return
-        raise AssertionError(f"Unhandled unsafe_handling: {mode!r}")
+        pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -451,7 +403,7 @@ class SanitizationPolicy:
         pass
 
     def handle_unsafe(self, msg: str, *, node: Any | None = None) -> None:
-        self._unsafe_handler.handle(msg, node=node)
+        pass
 
 
 _URL_NORMALIZE_STRIP_TABLE = {i: None for i in range(0x21)}
@@ -472,38 +424,15 @@ _ATTR_DROP_REGEX: re.Pattern[str] = re.compile(
 
 
 def _compiled_sanitize_transforms_for_policy(policy: SanitizationPolicy) -> list[Any]:
-    from .transforms import Sanitize, compile_transforms  # noqa: PLC0415
-
-    signature = _sanitization_policy_signature(policy)
-    compiled = policy._compiled_sanitize_transforms
-    if compiled is None or policy._compiled_sanitize_signature != signature:
-        compiled = compile_transforms((Sanitize(policy=policy),))
-        object.__setattr__(policy, "_compiled_sanitize_transforms", compiled)
-        object.__setattr__(policy, "_compiled_sanitize_signature", signature)
-    return compiled
+    pass
 
 
 def _seal_url_policy(url_policy: UrlPolicy) -> None:
-    sealed_rules: dict[tuple[str, str], UrlRule] = {}
-    for (tag, attr), rule in url_policy.allow_rules.items():
-        object.__setattr__(rule, "allowed_schemes", frozenset(str(s) for s in rule.allowed_schemes))
-        if rule.allowed_hosts is not None:
-            object.__setattr__(rule, "allowed_hosts", frozenset(str(h).lower() for h in rule.allowed_hosts))
-        sealed_rules[(str(tag).lower(), str(attr).lower())] = rule
-
-    object.__setattr__(url_policy, "allow_rules", MappingProxyType(sealed_rules))
+    pass
 
 
 def _seal_default_policy(policy: SanitizationPolicy) -> None:
-    object.__setattr__(
-        policy,
-        "allowed_attributes",
-        MappingProxyType({str(tag).lower(): frozenset(attrs) for tag, attrs in policy.allowed_attributes.items()}),
-    )
-    object.__setattr__(policy, "drop_content_tags", frozenset(policy.drop_content_tags))
-    object.__setattr__(policy, "allowed_css_properties", frozenset(policy.allowed_css_properties))
-    object.__setattr__(policy, "force_link_rel", frozenset(policy.force_link_rel))
-    _seal_url_policy(policy.url_policy)
+    pass
 
 
 DEFAULT_POLICY: SanitizationPolicy = SanitizationPolicy(
@@ -623,36 +552,7 @@ _RAWTEXT_SERIALIZATION_ELEMENTS: frozenset[str] = frozenset({"script", "style"})
 
 
 def _neutralize_rawtext_end_tag_sequences(text: str, tag_name: str) -> tuple[str, bool]:
-    if not text:
-        return text, False
-
-    lower_text = text.lower()
-    needle = f"</{tag_name}"
-    needle_len = len(needle)
-    out: list[str] = []
-    start = 0
-    changed = False
-
-    while True:
-        idx = lower_text.find(needle, start)
-        if idx == -1:
-            break
-
-        boundary = idx + needle_len
-        if boundary == len(text) or text[boundary] in " \t\n\r\f/>":
-            out.append(text[start:idx])
-            out.append("&lt;")
-            start = idx + 1
-            changed = True
-            continue
-
-        start = idx + 1
-
-    if not changed:
-        return text, False
-
-    out.append(text[start:])
-    return "".join(out), True
+    pass
 
 
 def _record_rawtext_security_issue(
@@ -663,18 +563,7 @@ def _record_rawtext_security_issue(
     message: str,
     node: Any,
 ) -> None:
-    policy.handle_unsafe(message, node=node)
-    if errors is None:
-        return
-    errors.append(
-        ParseError(
-            code,
-            line=node.origin_line,
-            column=node.origin_col,
-            category="security",
-            message=message,
-        )
-    )
+    pass
 
 
 def _sanitize_rawtext_element_contents(
@@ -683,94 +572,13 @@ def _sanitize_rawtext_element_contents(
     policy: SanitizationPolicy,
     errors: list[ParseError] | None,
 ) -> None:
-    from .node import Template  # noqa: PLC0415
-
-    stack: list[Any] = [node]
-
-    while stack:
-        current = stack.pop()
-        raw_name = current.name
-        if type(raw_name) is str:
-            name = raw_name if raw_name.islower() else raw_name.lower()
-        else:  # pragma: no cover
-            name = str(raw_name).lower()
-
-        if name in _RAWTEXT_SERIALIZATION_ELEMENTS:
-            children = current.children
-            if not children:
-                continue
-
-            text_children: list[Any] = []
-            text_parts: list[str] = []
-            for child in children:
-                if child.name == "#text":
-                    text_children.append(child)
-                    text_parts.append(child.data or "")
-                    continue
-
-                _record_rawtext_security_issue(
-                    policy=policy,
-                    errors=errors,
-                    code="unsafe-rawtext-child",
-                    message=f"Unsafe non-text child inside <{name}> was dropped",
-                    node=child,
-                )
-                child.parent = None
-
-            if not text_children:
-                current.children = []
-                continue
-
-            combined_text = "".join(text_parts)
-            primary_text = text_children[0]
-            sanitized_text, changed = _neutralize_rawtext_end_tag_sequences(combined_text, str(name))
-
-            if changed:
-                _record_rawtext_security_issue(
-                    policy=policy,
-                    errors=errors,
-                    code="unsafe-rawtext-end-tag",
-                    message=f"Unsafe raw text inside <{name}> contains a closing tag sequence",
-                    node=primary_text,
-                )
-                primary_text.data = sanitized_text
-                for extra_text in text_children[1:]:
-                    extra_text.parent = None
-                current.children = [primary_text] if sanitized_text else []
-            else:
-                current.children = text_children
-
-            if name == "style" and sanitized_text and _css_value_may_load_external_resource(sanitized_text):
-                _record_rawtext_security_issue(
-                    policy=policy,
-                    errors=errors,
-                    code="unsafe-style-resource",
-                    message="Unsafe CSS inside <style> contains resource-loading constructs",
-                    node=primary_text,
-                )
-                for child in current.children:
-                    child.parent = None
-                current.children = []
-            continue
-
-        children = current.children
-        if children:
-            stack.extend(reversed(children))
-
-        if type(current) is Template and current.template_content is not None:
-            stack.append(current.template_content)
+    pass
 
 
 def _is_valid_css_property_name(name: str) -> bool:
     # Conservative: allow only ASCII letters/digits/hyphen.
     # This keeps parsing deterministic and avoids surprises with escapes.
-    if not name:
-        return False
-    for ch in name:
-        if "a" <= ch <= "z" or "0" <= ch <= "9" or ch == "-":
-            continue
-        return False
-    return True
+    pass
 
 
 def _css_value_contains_disallowed_functions(value: str, *, allow_url: bool) -> bool:
@@ -783,137 +591,20 @@ def _css_value_contains_disallowed_functions(value: str, *, allow_url: bool) -> 
     #
     # If allow_url=True, url(...) is not considered disallowed (it is handled
     # separately by `_sanitize_css_url_functions`).
-    if "\\" in value:
-        return True
-
-    buf: list[str] = []
-    max_len = len("alphaimageloader")
-
-    i = 0
-    n = len(value)
-    while i < n:
-        ch = value[i]
-
-        # Treat CSS comments as ignorable, so obfuscation like u/**/rl( is caught.
-        if ch == "/" and i + 1 < n and value[i + 1] == "*":
-            i += 2
-            while i + 1 < n:
-                if value[i] == "*" and value[i + 1] == "/":
-                    i += 2
-                    break
-                i += 1
-            else:
-                # Unterminated comments are invalid CSS; be conservative.
-                return True
-            continue
-
-        o = ord(ch)
-        if o <= 0x20 or o == 0x7F:
-            i += 1
-            continue
-
-        lower_ch = chr(o + 0x20) if "A" <= ch <= "Z" else ch
-
-        buf.append(lower_ch)
-        if len(buf) > max_len:
-            buf.pop(0)
-
-        if len(buf) >= 7 and buf[-7:] == ["@", "i", "m", "p", "o", "r", "t"]:
-            return True
-
-        # Check for url( and image-set( anywhere in the normalized stream.
-        if not allow_url and len(buf) >= 4 and buf[-4:] == ["u", "r", "l", "("]:
-            return True
-        if len(buf) >= 10 and buf[-10:] == [
-            "i",
-            "m",
-            "a",
-            "g",
-            "e",
-            "-",
-            "s",
-            "e",
-            "t",
-            "(",
-        ]:
-            return True
-
-        # IE-only but still worth blocking defensively.
-        if len(buf) >= 11 and buf[-11:] == [
-            "e",
-            "x",
-            "p",
-            "r",
-            "e",
-            "s",
-            "s",
-            "i",
-            "o",
-            "n",
-            "(",
-        ]:
-            return True
-
-        # Legacy IE CSS filters that can fetch remote resources.
-        if len(buf) >= 7 and buf[-7:] == ["p", "r", "o", "g", "i", "d", ":"]:
-            return True
-        if len(buf) >= 16 and buf[-16:] == [
-            "a",
-            "l",
-            "p",
-            "h",
-            "a",
-            "i",
-            "m",
-            "a",
-            "g",
-            "e",
-            "l",
-            "o",
-            "a",
-            "d",
-            "e",
-            "r",
-        ]:
-            return True
-
-        # Legacy bindings/behaviors that can pull remote content.
-        if len(buf) >= 9 and buf[-9:] == ["b", "e", "h", "a", "v", "i", "o", "r", ":"]:
-            return True
-        if len(buf) >= 12 and buf[-12:] == [
-            "-",
-            "m",
-            "o",
-            "z",
-            "-",
-            "b",
-            "i",
-            "n",
-            "d",
-            "i",
-            "n",
-            "g",
-        ]:
-            return True
-
-        i += 1
-
-    return False
+    pass
 
 
 def _css_value_may_load_external_resource(value: str) -> bool:
-    return _css_value_contains_disallowed_functions(value, allow_url=False)
+    pass
 
 
 def _css_value_has_disallowed_resource_functions(value: str) -> bool:
     """Return True if `value` contains disallowed CSS constructs (excluding url())."""
-
-    return _css_value_contains_disallowed_functions(value, allow_url=True)
+    pass
 
 
 def _lookup_css_url_rule(*, url_policy: UrlPolicy, tag: str, prop: str) -> UrlRule | None:
-    key = f"style:{prop}"
-    return url_policy.allow_rules.get((tag, key)) or url_policy.allow_rules.get(("*", key))
+    pass
 
 
 def _sanitize_url_function_value(
@@ -930,116 +621,11 @@ def _sanitize_url_function_value(
 ) -> str | None:
     # Keep this parser intentionally conservative. We only support plain url(...)
     # without escapes and without nested parentheses inside the URL token.
-    v = value
-
-    if "\\" in v:
-        return None
-
-    # Reject comments entirely; they are commonly used for obfuscation.
-    if "/*" in v:
-        return None
-
-    lower = v.lower()
-    out_parts: list[str] = []
-    i = 0
-    replaced_any = False
-    n = len(v)
-
-    while True:
-        j = lower.find("url(", i)
-        if j == -1:
-            out_parts.append(v[i:])
-            break
-
-        out_parts.append(v[i:j])
-        k = j + 4  # after 'url('
-
-        # Skip whitespace after 'url('
-        while k < n and ord(v[k]) <= 0x20:
-            k += 1
-        if k >= n:
-            return None
-
-        quoted = v[k] in {'"', "'"}
-        q = v[k] if quoted else ""
-        if quoted:
-            k += 1
-            start = k
-            end_quote = v.find(q, k)
-            if end_quote == -1:
-                return None
-            url_raw = v[start:end_quote]
-            k = end_quote + 1
-
-            while k < n and ord(v[k]) <= 0x20:
-                k += 1
-            if k >= n or v[k] != ")":
-                return None
-            end_paren = k
-        else:
-            end_paren = v.find(")", k)
-            if end_paren == -1:
-                return None
-            url_raw = v[k:end_paren].strip()
-            if not url_raw:
-                return None
-            # Unquoted url(...) must not contain whitespace.
-            if any(ord(ch) <= 0x20 or ord(ch) == 0x7F for ch in url_raw):
-                return None
-
-        # Require a clear token boundary after url(...). Without whitespace or a
-        # delimiter, we can't safely reason about how the CSS parser will
-        # interpret the value.
-        next_idx = end_paren + 1
-        if next_idx < n:
-            nxt = v[next_idx]
-            if not (ord(nxt) <= 0x20 or nxt in {",", "/"}):
-                return None
-
-        sanitized = _sanitize_url_value_with_rule(
-            rule=rule,
-            value=url_raw,
-            tag=tag,
-            attr=attr,
-            handling=handling,
-            allow_relative=allow_relative,
-            proxy=proxy,
-            url_filter=url_filter,
-            apply_filter=apply_filter,
-        )
-        if sanitized is None:
-            return None
-
-        # Avoid generating CSS that needs escaping.
-        for ch in sanitized:
-            o = ord(ch)
-            if o <= 0x20 or o == 0x7F or ch in {"'", '"', "(", ")", "\\"}:
-                return None
-
-        out_parts.append(f"url('{sanitized}')")
-        replaced_any = True
-
-        i = end_paren + 1
-
-    return None if not replaced_any else "".join(out_parts)
+    pass
 
 
 def _sanitize_css_url_functions(*, url_policy: UrlPolicy, tag: str, prop: str, value: str) -> str | None:
-    rule = _lookup_css_url_rule(url_policy=url_policy, tag=tag, prop=prop)
-    if rule is None:
-        return None
-
-    return _sanitize_url_function_value(
-        rule=rule,
-        value=value,
-        tag=tag,
-        attr=f"style:{prop}",
-        handling=_effective_url_handling(url_policy=url_policy, rule=rule),
-        allow_relative=_effective_allow_relative(url_policy=url_policy, rule=rule),
-        proxy=_effective_proxy(url_policy=url_policy, rule=rule),
-        url_filter=url_policy.url_filter,
-        apply_filter=True,
-    )
+    pass
 
 
 def _sanitize_inline_style(
@@ -1049,52 +635,7 @@ def _sanitize_inline_style(
     tag: str,
     url_policy: UrlPolicy | None = None,
 ) -> str | None:
-    allowed = allowed_css_properties
-    if not allowed:
-        return None
-
-    v = str(value)
-    if not v:
-        return None
-
-    out_parts: list[str] = []
-    for decl in v.split(";"):
-        d = decl.strip()
-        if not d:
-            continue
-        colon = d.find(":")
-        if colon <= 0:
-            continue
-
-        prop = d[:colon].strip().lower()
-        if not _is_valid_css_property_name(prop):
-            continue
-        if prop not in allowed:
-            continue
-
-        prop_value = d[colon + 1 :].strip()
-        if not prop_value:
-            continue
-
-        if _css_value_may_load_external_resource(prop_value):
-            if url_policy is None:
-                continue
-
-            if _css_value_has_disallowed_resource_functions(prop_value):
-                continue
-
-            sanitized_with_urls = _sanitize_css_url_functions(
-                url_policy=url_policy, tag=str(tag).lower(), prop=prop, value=prop_value
-            )
-            if sanitized_with_urls is None:
-                continue
-            prop_value = sanitized_with_urls
-
-        out_parts.append(f"{prop}: {prop_value}")
-
-    if not out_parts:
-        return None
-    return "; ".join(out_parts)
+    pass
 
 
 def _normalize_url_for_checking(value: str) -> str:
@@ -1103,75 +644,38 @@ def _normalize_url_for_checking(value: str) -> str:
     # and removing them can turn invalid schemes into valid ones.
     #
     # Fast path: most URLs contain no control/space chars, so avoid allocating.
-    if not _URL_NORMALIZE_STRIP_REGEX.search(value):
-        return value
-    return value.translate(_URL_NORMALIZE_STRIP_TABLE)
+    pass
 
 
 def _strip_invisible_unicode(value: str) -> str:
-    if not _INVISIBLE_UNICODE_STRIP_REGEX.search(value):
-        return value
-    return _INVISIBLE_UNICODE_STRIP_REGEX.sub("", value)
+    pass
 
 
 def _is_valid_scheme(scheme: str) -> bool:
-    first = scheme[0]
-    if not ("a" <= first <= "z" or "A" <= first <= "Z"):
-        return False
-    for ch in scheme[1:]:
-        if "a" <= ch <= "z" or "A" <= ch <= "Z" or "0" <= ch <= "9" or ch in "+-.":
-            continue
-        return False
-    return True
+    pass
 
 
 def _get_scheme(value: str) -> str | None:
     """Return the URL scheme (lowercased) if present and valid, else None."""
-    idx = value.find(":")
-    if idx <= 0:
-        return None
-    # Scheme must appear before any path/query/fragment separator.
-    end = len(value)
-    for sep in ("/", "?", "#"):
-        j = value.find(sep)
-        if j != -1 and j < end:
-            end = j
-    if idx >= end:
-        return None
-    scheme = value[:idx]
-    if not _is_valid_scheme(scheme):
-        return None
-    return scheme.lower()
+    pass
 
 
 def _has_invalid_scheme_like_prefix(value: str) -> bool:
-    idx = value.find(":")
-    if idx <= 0:
-        return False
-
-    end = len(value)
-    for sep in ("/", "?", "#"):
-        j = value.find(sep)
-        if j != -1 and j < end:
-            end = j
-    if idx >= end:
-        return False
-
-    return not _is_valid_scheme(value[:idx])
+    pass
 
 
 def _effective_proxy(*, url_policy: UrlPolicy, rule: UrlRule) -> UrlProxy | None:
-    return rule.proxy if rule.proxy is not None else url_policy.proxy
+    pass
 
 
 def _effective_url_handling(*, url_policy: UrlPolicy, rule: UrlRule) -> UrlHandling:
     # URL-like attributes are allowlisted via UrlPolicy.allow_rules. When they are
     # allowlisted and the URL passes validation, the default action is to keep the URL.
-    return rule.handling if rule.handling is not None else "allow"
+    pass
 
 
 def _effective_allow_relative(*, url_policy: UrlPolicy, rule: UrlRule) -> bool:
-    return rule.allow_relative if rule.allow_relative is not None else url_policy.default_allow_relative
+    pass
 
 
 def _sanitize_url_value_with_rule(
@@ -1186,93 +690,7 @@ def _sanitize_url_value_with_rule(
     url_filter: UrlFilter | None,
     apply_filter: bool,
 ) -> str | None:
-    v = value
-
-    if apply_filter and url_filter is not None:
-        rewritten = url_filter(tag, attr, v)
-        if rewritten is None:
-            return None
-        v = rewritten
-
-    stripped = v.strip()
-    normalized = _normalize_url_for_checking(stripped)
-    if not normalized:
-        # If normalization removes everything, the value was empty/whitespace/
-        # control-only. Drop it rather than keeping weird control characters.
-        return None
-
-    if "\\" in normalized:
-        # Browsers normalize backslashes during navigation and resource loading.
-        # Values like "\\evil.example/x" or "/\\evil.example/x" can become
-        # remote network requests even though Python's URL parsing treats them
-        # as relative or hostless. Reject them conservatively.
-        return None
-
-    if normalized.startswith("#"):
-        if not rule.allow_fragment:
-            return None
-        if handling == "strip":
-            return None
-        if handling == "proxy":
-            return None if proxy is None else _proxy_url_value(proxy=proxy, value=stripped)
-        return stripped
-
-    if handling == "proxy" and _has_invalid_scheme_like_prefix(normalized):
-        # If proxying is enabled, do not treat scheme-obfuscation as a relative URL.
-        # Some user agents normalize backslashes and other characters during navigation.
-        return None
-
-    if normalized.startswith("//"):
-        if not rule.resolve_protocol_relative:
-            return None
-
-        # Resolve to absolute URL for checking.
-        resolved_scheme = rule.resolve_protocol_relative.lower()
-        resolved_url = f"{resolved_scheme}:{normalized}"
-        if resolved_scheme not in rule.allowed_schemes:
-            return None
-
-        if rule.allowed_hosts is not None:
-            try:
-                parsed = urlsplit(resolved_url)
-            except ValueError:
-                return None
-            host = (parsed.hostname or "").lower()
-            if not host or host not in rule.allowed_hosts:
-                return None
-
-        if handling == "strip":
-            return None
-        if handling == "proxy":
-            return None if proxy is None else _proxy_url_value(proxy=proxy, value=resolved_url)
-        return resolved_url
-
-    scheme = _get_scheme(normalized)
-    if scheme is not None:
-        if scheme not in rule.allowed_schemes:
-            return None
-        if rule.allowed_hosts is not None:
-            try:
-                parsed = urlsplit(normalized)
-            except ValueError:
-                return None
-            host = (parsed.hostname or "").lower()
-            if not host or host not in rule.allowed_hosts:
-                return None
-        if handling == "strip":
-            return None
-        if handling == "proxy":
-            return None if proxy is None else _proxy_url_value(proxy=proxy, value=stripped)
-        return stripped
-
-    if not allow_relative:
-        return None
-
-    if handling == "strip":
-        return None
-    if handling == "proxy":
-        return None if proxy is None else _proxy_url_value(proxy=proxy, value=stripped)
-    return stripped
+    pass
 
 
 def _sanitize_srcset_value(
@@ -1284,44 +702,7 @@ def _sanitize_srcset_value(
     value: str,
 ) -> str | None:
     # Apply the URL filter once to the whole attribute value.
-    v = value
-    if url_policy.url_filter is not None:
-        rewritten = url_policy.url_filter(tag, attr, v)
-        if rewritten is None:
-            return None
-        v = rewritten
-
-    stripped = str(v).strip()
-    if not stripped:
-        return None
-
-    out_candidates: list[str] = []
-    for raw_candidate in stripped.split(","):
-        c = raw_candidate.strip()
-        if not c:
-            continue
-
-        parts = c.split(None, 1)
-        url_token = parts[0]
-        desc = parts[1].strip() if len(parts) == 2 else ""
-
-        sanitized_url = _sanitize_url_value_with_rule(
-            rule=rule,
-            value=url_token,
-            tag=tag,
-            attr=attr,
-            handling=_effective_url_handling(url_policy=url_policy, rule=rule),
-            allow_relative=_effective_allow_relative(url_policy=url_policy, rule=rule),
-            proxy=_effective_proxy(url_policy=url_policy, rule=rule),
-            url_filter=None,
-            apply_filter=False,
-        )
-        if sanitized_url is None:
-            return None
-
-        out_candidates.append(f"{sanitized_url} {desc}".strip())
-
-    return None if not out_candidates else ", ".join(out_candidates)
+    pass
 
 
 def _sanitize_space_separated_url_list(
@@ -1332,37 +713,7 @@ def _sanitize_space_separated_url_list(
     attr: str,
     value: str,
 ) -> str | None:
-    v = value
-    if url_policy.url_filter is not None:
-        rewritten = url_policy.url_filter(tag, attr, v)
-        if rewritten is None:
-            return None
-        v = rewritten
-
-    stripped = str(v).strip()
-    if not stripped:
-        return None
-
-    tokens = stripped.split()
-
-    out_tokens: list[str] = []
-    for token in tokens:
-        sanitized = _sanitize_url_value_with_rule(
-            rule=rule,
-            value=token,
-            tag=tag,
-            attr=attr,
-            handling=_effective_url_handling(url_policy=url_policy, rule=rule),
-            allow_relative=_effective_allow_relative(url_policy=url_policy, rule=rule),
-            proxy=_effective_proxy(url_policy=url_policy, rule=rule),
-            url_filter=None,
-            apply_filter=False,
-        )
-        if sanitized is None:
-            return None
-        out_tokens.append(sanitized)
-
-    return None if not out_tokens else " ".join(out_tokens)
+    pass
 
 
 _URL_LIKE_ATTRS: frozenset[str] = frozenset(
@@ -1399,72 +750,15 @@ _URL_FUNCTION_LIKE_ATTRS: frozenset[str] = frozenset(
 
 
 def _url_rule_signature(rule: UrlRule) -> tuple[Any, ...]:
-    allowed_schemes = tuple(sorted(str(s) for s in rule.allowed_schemes))
-    allowed_hosts = None
-    if rule.allowed_hosts is not None:
-        allowed_hosts = tuple(sorted(str(h).lower() for h in rule.allowed_hosts))
-
-    proxy_sig = None
-    if rule.proxy is not None:
-        proxy_sig = (rule.proxy.url, rule.proxy.param)
-
-    return (
-        rule.allow_fragment,
-        rule.resolve_protocol_relative,
-        allowed_schemes,
-        allowed_hosts,
-        rule.handling,
-        rule.allow_relative,
-        proxy_sig,
-    )
+    pass
 
 
 def _url_policy_signature(url_policy: UrlPolicy) -> tuple[Any, ...]:
-    allow_rules_sig = tuple(
-        sorted(
-            (
-                (str(tag).lower(), str(attr).lower()),
-                _url_rule_signature(rule),
-            )
-            for (tag, attr), rule in url_policy.allow_rules.items()
-        )
-    )
-
-    proxy_sig = None
-    if url_policy.proxy is not None:
-        proxy_sig = (url_policy.proxy.url, url_policy.proxy.param)
-
-    return (
-        url_policy.default_handling,
-        url_policy.default_allow_relative,
-        allow_rules_sig,
-        url_policy.url_filter,
-        proxy_sig,
-    )
+    pass
 
 
 def _sanitization_policy_signature(policy: SanitizationPolicy) -> tuple[Any, ...]:
-    allowed_attributes_sig = tuple(
-        sorted(
-            (
-                str(tag).lower(),
-                tuple(sorted(str(attr).lower() for attr in attrs)),
-            )
-            for tag, attrs in policy.allowed_attributes.items()
-        )
-    )
-
-    return (
-        tuple(sorted(str(tag).lower() for tag in policy.allowed_tags)),
-        allowed_attributes_sig,
-        tuple(sorted(str(tag).lower() for tag in policy.drop_content_tags)),
-        tuple(sorted(str(prop).lower() for prop in policy.allowed_css_properties)),
-        tuple(sorted(str(token).lower() for token in policy.force_link_rel)),
-        policy.disallowed_tag_handling,
-        policy.strip_invisible_unicode,
-        policy.drop_foreign_namespaces,
-        _url_policy_signature(policy.url_policy),
-    )
+    pass
 
 
 def _sanitize(node: Any, *, policy: SanitizationPolicy | None = None) -> Any:
@@ -1489,31 +783,4 @@ def sanitize_dom(
     sanitized as if it were the only child of a document fragment; the returned
     node may need to be reattached by the caller.
     """
-
-    if policy is None:
-        policy = DEFAULT_DOCUMENT_POLICY if node.name == "#document" else DEFAULT_POLICY
-
-    from .transforms import apply_compiled_transforms  # noqa: PLC0415
-
-    compiled = _compiled_sanitize_transforms_for_policy(policy)
-
-    if node.name in {"#document", "#document-fragment"}:
-        apply_compiled_transforms(node, compiled, errors=errors)
-        _sanitize_rawtext_element_contents(node, policy=policy, errors=errors)
-        return node
-
-    from .node import DocumentFragment  # noqa: PLC0415
-
-    wrapper = DocumentFragment()
-    wrapper.append_child(node)
-    apply_compiled_transforms(wrapper, compiled, errors=errors)
-    _sanitize_rawtext_element_contents(wrapper, policy=policy, errors=errors)
-
-    children = cast("list[Any]", wrapper.children)
-    if len(children) == 1:
-        only = children[0]
-        only.parent = None
-        wrapper.children = []
-        return only
-
-    return wrapper
+    pass
