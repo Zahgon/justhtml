@@ -94,24 +94,7 @@ _FOREIGN_ROOT_TAGS: frozenset[str] = frozenset({"math", "svg"})
 
 
 def _is_effectively_foreign_node(node: Node) -> bool:
-    current: Node | None = node
-    while current is not None:
-        ns = current.namespace
-        if ns not in (None, "html"):
-            return True
-
-        name = current.name
-        if name.startswith("#") or name == "!doctype":
-            current = current.parent
-            continue
-
-        lowered = name if name.islower() else name.lower()
-        if lowered in _FOREIGN_ROOT_TAGS:
-            return True
-
-        current = current.parent
-
-    return False
+    pass
 
 
 def emit_error(
@@ -128,24 +111,7 @@ def emit_error(
     Errors are appended to the active sink when transforms are applied (e.g.
     during JustHTML construction). If no sink is active, this is a no-op.
     """
-
-    sink = _ERROR_SINK.get()
-    if sink is None:
-        return
-
-    if node is not None:
-        line = node.origin_line
-        column = node.origin_col
-
-    sink.append(
-        ParseError(
-            str(code),
-            line=line,
-            column=column,
-            category=str(category),
-            message=str(message) if message is not None else str(code),
-        )
-    )
+    pass
 
 
 def _collapse_html_space_characters(text: str) -> str:
@@ -497,41 +463,7 @@ def _glob_match(pattern: str, text: str) -> bool:
     - '*' matches any sequence (including empty)
     - '?' matches any single character
     """
-
-    if pattern == "*":
-        return True
-    if "*" not in pattern and "?" not in pattern:
-        return pattern == text
-
-    p_i = 0
-    t_i = 0
-    star_i = -1
-    match_i = 0
-
-    while t_i < len(text):
-        if p_i < len(pattern) and (pattern[p_i] == "?" or pattern[p_i] == text[t_i]):
-            p_i += 1
-            t_i += 1
-            continue
-
-        if p_i < len(pattern) and pattern[p_i] == "*":
-            star_i = p_i
-            match_i = t_i
-            p_i += 1
-            continue
-
-        if star_i != -1:
-            p_i = star_i + 1
-            match_i += 1
-            t_i = match_i
-            continue
-
-        return False
-
-    while p_i < len(pattern) and pattern[p_i] == "*":
-        p_i += 1
-
-    return p_i == len(pattern)
+    pass
 
 
 def _split_into_top_level_stages(specs: list[TransformSpec] | tuple[TransformSpec, ...]) -> list[Stage]:

@@ -271,7 +271,7 @@ def _punycode_href(href: str) -> str:
 
 
 def find_links(text: str) -> list[LinkMatch]:
-    return find_links_with_config(text, LinkifyConfig())
+    pass
 
 
 def find_links_with_config(text: str, config: LinkifyConfig) -> list[LinkMatch]:
