@@ -679,17 +679,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                     on_drop: NodeCallback | None = on_drop,
                     on_report: ReportCallback | None = on_report,
                 ) -> DecideAction:
-                    name = node.name
-                    if name.startswith("#") or name == "!doctype":
-                        return Decide.KEEP
-                    tag = str(name).lower()
-                    if tag not in tags:
-                        return Decide.KEEP
-                    if on_drop is not None:
-                        on_drop(node)
-                    if on_report is not None:
-                        on_report(f"Dropped tag '{tag}' (matched selector '{selector_str}')", node=node)
-                    return Decide.DROP
+                    pass
 
                 compiled.append(
                     _CompiledDecideTransform(
@@ -763,12 +753,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> None:
-                if on_hook is not None:
-                    on_hook(node)
-                if on_report is not None:
-                    tag = str(node.name).lower()
-                    on_report(f"Edited <{tag}> (matched selector '{selector_str}')", node=node)
-                edit_func(node)
+                pass
 
             compiled.append(
                 _CompiledSelectorTransform(
@@ -793,11 +778,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> None:
-                if on_hook is not None:
-                    on_hook(node)
-                if on_report is not None:
-                    on_report("Edited document root", node=node)
-                edit_document_func(node)
+                pass
 
             compiled.append(_CompiledEditDocumentTransform(kind="edit_document", callback=_wrapped_root))
             continue
@@ -821,16 +802,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                     on_hook: NodeCallback | None = on_hook,
                     on_report: ReportCallback | None = on_report,
                 ) -> DecideAction:
-                    action = decide_func(node)
-                    if action is DecideAction.KEEP:
-                        return action
-                    if on_hook is not None:
-                        on_hook(node)
-                    if on_report is not None:
-                        nm = node.name
-                        label = str(nm).lower() if not nm.startswith("#") and nm != "!doctype" else str(nm)
-                        on_report(f"Decide -> {action.value} '{label}' (matched selector '{selector_str}')", node=node)
-                    return action
+                    pass
 
                 effective_callback = _wrapped_decide
 
@@ -859,15 +831,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> dict[str, str | None] | None:
-                out = edit_attrs_func(node)
-                if out is None:
-                    return None
-                if on_hook is not None:
-                    on_hook(node)
-                if on_report is not None:
-                    tag = str(node.name).lower()
-                    on_report(f"Edited attributes on <{tag}> (matched selector '{selector_str}')", node=node)
-                return out
+                pass
 
             _append_compiled(
                 _CompiledRewriteAttrsTransform(
@@ -945,18 +909,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> DecideAction:
-                name = node.name
-                if name.startswith("#") or name == "!doctype":
-                    return Decide.KEEP
-                ns = node.namespace
-                if ns not in (None, "html"):
-                    if on_hook is not None:
-                        on_hook(node)
-                    if on_report is not None:
-                        tag = str(name).lower()
-                        on_report(f"Unsafe tag '{tag}' (foreign namespace)", node=node)
-                    return Decide.DROP
-                return Decide.KEEP
+                pass
 
             compiled.append(
                 _CompiledDecideTransform(
@@ -984,87 +937,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> dict[str, str | None] | None:
-                attrs = node.attrs
-                if not attrs:
-                    return None
-
-                if not patterns:
-                    return None
-
-                # Hot-path used by the sanitizer: ("*:*", "on*", "srcdoc").
-                # Avoid regex and avoid building a new dict when nothing matches.
-                if patterns == ("*:*", "on*", "srcdoc"):
-                    for key in attrs:
-                        lower_key = key if key.islower() else key.lower()
-                        if lower_key.startswith("on") or lower_key == "srcdoc" or ":" in lower_key:
-                            break
-                    else:
-                        return None
-
-                    out = dict(attrs)
-                    for key in attrs:
-                        lower_key = key if key.islower() else key.lower()
-                        if not (lower_key.startswith("on") or lower_key == "srcdoc" or ":" in lower_key):
-                            continue
-                        if on_report is not None:  # pragma: no cover
-                            if lower_key == "srcdoc":
-                                found_pat = "srcdoc"
-                            elif ":" in lower_key:
-                                found_pat = "*:*"
-                            else:
-                                found_pat = "on*"
-                            on_report(
-                                f"Unsafe attribute '{lower_key}' (matched forbidden pattern '{found_pat}')",
-                                node=node,
-                            )
-                        out.pop(key, None)
-                    if on_hook is not None:
-                        on_hook(node)  # pragma: no cover
-                    return out
-
-                # Generic path: avoid allocating unless something changes.
-                # Note: `compiled_regex` is always set here (we return early when
-                # `patterns` is empty, and the sanitizer hot-path is handled above).
-                if compiled_regex is None:  # pragma: no cover
-                    return None
-                for raw_key in attrs:
-                    if not raw_key or not str(raw_key).strip():
-                        continue
-                    key = raw_key
-                    if not key.islower():
-                        key = key.lower()
-                    if compiled_regex.match(key):
-                        break
-                else:
-                    return None
-
-                out2: dict[str, str | None] = {}
-                for raw_key, value in attrs.items():
-                    if not raw_key or not str(raw_key).strip():
-                        continue
-                    key = raw_key
-                    if not key.islower():
-                        key = key.lower()
-
-                    if compiled_regex.match(key):
-                        if on_report is not None:
-                            # Re-check to report which pattern matched (rare path)
-                            found_pat = "?"
-                            for pat in patterns:
-                                if _glob_match(pat, key):  # pragma: no cover
-                                    found_pat = pat
-                                    break
-                            on_report(
-                                f"Unsafe attribute '{key}' (matched forbidden pattern '{found_pat}')",
-                                node=node,
-                            )
-                        continue
-
-                    out2[key] = value
-
-                if on_hook is not None:
-                    on_hook(node)  # pragma: no cover
-                return out2
+                pass
 
             selector_str = t.selector
             all_nodes = selector_str.strip() == "*"
@@ -1097,63 +970,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> dict[str, str | None] | None:
-                attrs = node.attrs
-                if not attrs:
-                    return None
-                tag = node.name
-                if type(tag) is not str:  # pragma: no cover
-                    tag = str(tag)
-
-                # Most tags fall back to global allowed attrs. Avoid tag
-                # normalization work unless we actually have tag-specific rules.
-                allowed = allowed_by_tag.get(tag)
-                if allowed is None:
-                    if not tag.islower():  # pragma: no cover
-                        allowed = allowed_by_tag.get(tag.lower())
-                    if allowed is None:
-                        allowed = allowed_global
-
-                # Fast path: attrs already normalized and allowed.
-                for key in attrs:
-                    if type(key) is not str:
-                        break
-                    if not key or key not in allowed:
-                        break
-                else:
-                    return None
-
-                changed = False
-                out: dict[str, str | None] = {}
-                for raw_key in attrs:
-                    value = attrs[raw_key]
-                    raw_key_str = raw_key if type(raw_key) is str else str(raw_key)
-                    if not raw_key_str.strip():
-                        # Drop invalid attribute names like '' or whitespace-only.
-                        changed = True
-                        continue
-                    key = raw_key_str
-                    if key in allowed:
-                        out[key] = value
-                        continue
-
-                    # Mixed-case keys (e.g. user-constructed trees): normalize
-                    # only when necessary.
-                    if not key.islower():
-                        lowered = key.lower()
-                        if lowered in allowed:
-                            out[lowered] = value
-                            changed = True
-                            continue
-                        key = lowered
-
-                    changed = True
-                    if on_report is not None:
-                        on_report(f"Unsafe attribute '{key}' (not allowed)", node=node)
-                if not changed:
-                    return None
-                if on_hook is not None:
-                    on_hook(node)  # pragma: no cover
-                return out
+                pass
 
             selector_str = t.selector
             all_nodes = selector_str.strip() == "*"
@@ -1179,153 +996,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> dict[str, str | None] | None:
-                attrs = node.attrs
-                if not attrs:
-                    return None
-
-                tag = str(node.name)
-                if not tag.islower():
-                    tag = tag.lower()
-                to_drop: list[str] | None = None
-                to_set: dict[str, str] | None = None
-
-                http_equiv_key: str | None = None
-                content_key: str | None = None
-                for key, raw_value in attrs.items():
-                    lower_key = key if key.islower() else key.lower()
-                    if lower_key == "http-equiv" and raw_value is not None:
-                        http_equiv_key = key
-                    elif lower_key == "content":
-                        content_key = key
-
-                if http_equiv_key is not None and content_key is not None:
-                    http_equiv_value = attrs.get(http_equiv_key)
-                    if http_equiv_value is not None and str(http_equiv_value).strip().lower() == "refresh":
-                        if on_report is not None:  # pragma: no cover
-                            on_report("Unsafe URL in attribute 'content' (meta refresh)", node=node)
-                        to_drop = [content_key]
-
-                # Most nodes have no URL-like attrs; avoid allocations in that case.
-                for key in attrs:
-                    lower_key = key if key.islower() else key.lower()
-                    raw_value = attrs[key]
-
-                    is_url_function_attr = False
-                    if (
-                        raw_value is not None
-                        and _is_effectively_foreign_node(node)
-                        and lower_key in _URL_FUNCTION_LIKE_ATTRS
-                    ):
-                        is_url_function_attr = _css_value_may_load_external_resource(str(raw_value))
-
-                    if lower_key not in _URL_LIKE_ATTRS and not is_url_function_attr:
-                        continue
-
-                    if tag == "base" and lower_key == "href":
-                        if on_report is not None:
-                            on_report("Unsafe URL in attribute 'href' (base tag)", node=node)
-                        if to_drop is None:
-                            to_drop = []
-                        to_drop.append(key)
-                        continue
-
-                    if raw_value is None:
-                        if on_report is not None:  # pragma: no cover
-                            on_report(f"Unsafe URL in attribute '{lower_key}'", node=node)
-                        if to_drop is None:
-                            to_drop = []
-                        to_drop.append(key)
-                        continue
-
-                    rule = url_policy.allow_rules.get((tag, lower_key))
-                    if rule is None:
-                        if on_report is not None:  # pragma: no cover
-                            on_report(f"Unsafe URL in attribute '{lower_key}' (no rule)", node=node)
-                        if to_drop is None:
-                            to_drop = []
-                        to_drop.append(key)
-                        continue
-
-                    if lower_key in {"srcset", "imagesrcset"}:
-                        sanitized = _sanitize_srcset_value(
-                            url_policy=url_policy,
-                            rule=rule,
-                            tag=tag,
-                            attr=lower_key,
-                            value=str(raw_value),
-                        )
-                    elif lower_key in {"ping", "attributionsrc"}:
-                        sanitized = _sanitize_space_separated_url_list(
-                            url_policy=url_policy,
-                            rule=rule,
-                            tag=tag,
-                            attr=lower_key,
-                            value=str(raw_value),
-                        )
-                    elif is_url_function_attr:
-                        raw_value_str = str(raw_value)
-                        if _css_value_has_disallowed_resource_functions(raw_value_str):
-                            sanitized = None
-                        else:
-                            sanitized = _sanitize_url_function_value(
-                                rule=rule,
-                                value=raw_value_str,
-                                tag=tag,
-                                attr=lower_key,
-                                handling=_effective_url_handling(url_policy=url_policy, rule=rule),
-                                allow_relative=_effective_allow_relative(url_policy=url_policy, rule=rule),
-                                proxy=_effective_proxy(url_policy=url_policy, rule=rule),
-                                url_filter=url_policy.url_filter,
-                                apply_filter=True,
-                            )
-                    else:
-                        sanitized = _sanitize_url_value_with_rule(
-                            rule=rule,
-                            value=str(raw_value),
-                            tag=tag,
-                            attr=lower_key,
-                            handling=_effective_url_handling(url_policy=url_policy, rule=rule),
-                            allow_relative=_effective_allow_relative(url_policy=url_policy, rule=rule),
-                            proxy=_effective_proxy(url_policy=url_policy, rule=rule),
-                            url_filter=url_policy.url_filter,
-                            apply_filter=True,
-                        )
-
-                    if sanitized is None:
-                        if on_report is not None:
-                            on_report(f"Unsafe URL in attribute '{lower_key}'", node=node)
-                        if to_drop is None:
-                            to_drop = []
-                        to_drop.append(key)
-                        continue
-
-                    if key != lower_key:
-                        if to_drop is None:
-                            to_drop = []
-                        to_drop.append(key)
-                        if to_set is None:
-                            to_set = {}
-                        to_set[lower_key] = sanitized
-                        continue
-
-                    if raw_value != sanitized:
-                        if to_set is None:
-                            to_set = {}
-                        to_set[key] = sanitized
-
-                if to_drop is None and to_set is None:
-                    return None
-
-                out = dict(attrs)
-                if to_drop is not None:
-                    for key in to_drop:
-                        out.pop(key, None)
-                if to_set is not None:
-                    out.update(to_set)
-
-                if on_hook is not None:
-                    on_hook(node)
-                return out
+                pass
 
             selector_str = t.selector
             all_nodes = selector_str.strip() == "*"
@@ -1351,55 +1022,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 on_hook: NodeCallback | None = on_hook,
                 on_report: ReportCallback | None = on_report,
             ) -> dict[str, str | None] | None:
-                attrs = node.attrs
-                if not attrs:
-                    return None
-
-                style_key: str | None = None
-                for key in attrs:
-                    lower_key = key if key.islower() else key.lower()
-                    if lower_key == "style":
-                        style_key = key
-                        break
-
-                if style_key is None:
-                    return None
-
-                raw_value = attrs.get(style_key)
-                if raw_value is None:
-                    if on_report is not None:
-                        on_report("Unsafe inline style in attribute 'style'", node=node)
-                    out = dict(attrs)
-                    out.pop(style_key, None)
-                    if on_hook is not None:
-                        on_hook(node)
-                    return out
-
-                sanitized_style = _sanitize_inline_style(
-                    allowed_css_properties=allowed_css_properties,
-                    value=str(raw_value),
-                    tag=str(node.name).lower(),
-                    url_policy=None,
-                )
-                if sanitized_style is None:
-                    if on_report is not None:
-                        on_report("Unsafe inline style in attribute 'style'", node=node)
-                    out = dict(attrs)
-                    out.pop(style_key, None)
-                    if on_hook is not None:
-                        on_hook(node)
-                    return out
-
-                if style_key == "style" and raw_value == sanitized_style:
-                    return None
-
-                out = dict(attrs)
-                if style_key != "style":
-                    out.pop(style_key, None)
-                out["style"] = sanitized_style
-                if on_hook is not None:
-                    on_hook(node)
-                return out
+                pass
 
             selector_str = t.selector
             all_nodes = selector_str.strip() == "*"
@@ -1443,9 +1066,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 policy: SanitizationPolicy = policy,
                 rep_sanitize: ReportCallback | None = rep_sanitize,
             ) -> None:
-                policy.handle_unsafe(msg, node=node)
-                if rep_sanitize:
-                    rep_sanitize(msg, node=node)
+                pass
 
             # Pre-calc parsing logic
             allowed_tags = frozenset(policy.allowed_tags)
@@ -1465,36 +1086,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                 # names produced by the tokenizer are already ASCII-lowercased.
                 # Programmatic DOM input may not be normalized, so match
                 # policy semantics case-insensitively here as well.
-                raw_tag = str(node.name)
-                tag = raw_tag if raw_tag.islower() else raw_tag.lower()
-
-                if tag in allowed_tags:
-                    return DecideAction.KEEP
-
-                if tag in drop_content_tags:
-                    msg = f"Unsafe tag '{tag}' (dropped content)"
-                    policy.handle_unsafe(msg, node=node)
-                    if cb:
-                        cb(node)
-                    if rep:
-                        rep(msg, node=node)
-                    return DecideAction.DROP
-
-                # Not allowed
-                msg_unsafe = f"Unsafe tag '{tag}' (not allowed)"
-                policy.handle_unsafe(msg_unsafe, node=node)
-                if cb:
-                    cb(node)
-                if rep:
-                    rep(msg_unsafe, node=node)
-
-                if handling == "drop":
-                    return DecideAction.DROP
-                if handling == "unwrap":
-                    return DecideAction.UNWRAP
-                if handling == "escape":
-                    return DecideAction.ESCAPE
-                return DecideAction.DROP  # pragma: no cover
+                pass
 
             # Pre-calc attributes logic
             effective_allowed_attrs = policy.allowed_attributes
@@ -1522,12 +1114,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                     cb: NodeCallback | None = cb_foreign,
                     rep: ReportCallback = rep_foreign,
                 ) -> DecideAction:
-                    if _is_effectively_foreign_node(node):
-                        if cb is not None:
-                            cb(node)
-                        rep(f"Unsafe tag '{node.name}' (foreign namespace)", node=node)
-                        return DecideAction.DROP
-                    return DecideAction.KEEP
+                    pass
 
                 decide_callbacks.append(_drop_foreign_namespace)
             else:
@@ -1541,18 +1128,7 @@ def compile_transforms(transforms: list[TransformSpec] | tuple[TransformSpec, ..
                     rep: ReportCallback = rep_active_foreign,
                     active_foreign_tags: frozenset[str] = active_foreign_tags,
                 ) -> DecideAction:
-                    if not _is_effectively_foreign_node(node):
-                        return DecideAction.KEEP
-
-                    raw_tag = str(node.name)
-                    tag = raw_tag if raw_tag.islower() else raw_tag.lower()
-                    if tag not in active_foreign_tags:
-                        return DecideAction.KEEP
-
-                    if cb is not None:
-                        cb(node)
-                    rep(f"Unsafe tag '{tag}' (active foreign content)", node=node)
-                    return DecideAction.DROP
+                    pass
 
                 decide_callbacks.append(_drop_active_foreign_content)
 

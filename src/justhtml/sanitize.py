@@ -194,21 +194,7 @@ class UnsafeHandler:
         del errors[write_i:]
 
     def collected(self) -> list[ParseError]:
-        src = self.sink if self.sink is not None else self._errors
-        if not src:
-            return []
-
-        if self.sink is not None:
-            out = [e for e in src if e.category == "security"]
-        else:
-            out = list(src)
-        out.sort(
-            key=lambda e: (
-                e.line if e.line is not None else 1_000_000_000,
-                e.column if e.column is not None else 1_000_000_000,
-            )
-        )
-        return out
+        pass
 
     def handle(self, msg: str, *, node: Any | None = None) -> None:
         mode = self.unsafe_handling
@@ -451,10 +437,10 @@ class SanitizationPolicy:
         object.__setattr__(self, "_allowed_attrs_by_tag", by_tag)
 
     def reset_collected_security_errors(self) -> None:
-        self._unsafe_handler.reset()
+        pass
 
     def collected_security_errors(self) -> list[ParseError]:
-        return self._unsafe_handler.collected()
+        pass
 
     def collects_security_errors_into(self, sink: list[ParseError]) -> bool:
         """Return True if security findings are being collected into `sink`.
@@ -462,7 +448,7 @@ class SanitizationPolicy:
         This is intentionally a small helper to avoid other modules depending
         on the private UnsafeHandler implementation details.
         """
-        return self._unsafe_handler.sink is sink
+        pass
 
     def handle_unsafe(self, msg: str, *, node: Any | None = None) -> None:
         self._unsafe_handler.handle(msg, node=node)
@@ -1487,69 +1473,7 @@ def _sanitize(node: Any, *, policy: SanitizationPolicy | None = None) -> Any:
     This returns a sanitized clone without mutating the original tree.
     For performance, it builds the sanitized clone in a single pass.
     """
-
-    if policy is None:
-        policy = DEFAULT_DOCUMENT_POLICY if node.name == "#document" else DEFAULT_POLICY
-
-    # Escape-mode tag reconstruction may need access to the original source HTML.
-    # Historically we allow a child element to inherit _source_html from an
-    # ancestor container; keep that behavior even though we sanitize a clone.
-    if policy.disallowed_tag_handling == "escape":
-        root_source_html = getattr(node, "_source_html", None)
-        if root_source_html:
-            from .node import Template  # noqa: PLC0415
-
-            stack: list[Any] = [node]
-            while stack:
-                current = stack.pop()
-                current_source_html = getattr(current, "_source_html", None) or root_source_html
-
-                children = getattr(current, "children", None) or ()
-                for child in children:
-                    # Text does not have _source_html.
-                    if getattr(child, "name", "") == "#text":
-                        continue
-                    if getattr(child, "_source_html", None) is None:
-                        child._source_html = current_source_html
-                    stack.append(child)
-
-                if type(current) is Template and current.template_content is not None:
-                    tc = current.template_content
-                    if getattr(tc, "_source_html", None) is None:
-                        tc._source_html = current_source_html
-                    stack.append(tc)
-
-    # We intentionally implement safe-output sanitization by applying the
-    # `Sanitize(policy=...)` transform pipeline to a clone of the node.
-    # This keeps a single canonical sanitization algorithm.
-    from .transforms import apply_compiled_transforms  # noqa: PLC0415
-
-    compiled = _compiled_sanitize_transforms_for_policy(policy)
-
-    # Container-root rule: transforms walk children of the provided root.
-    # For non-container roots, wrap the cloned node in a document fragment so
-    # the sanitizer can act on the root node itself.
-    if node.name in {"#document", "#document-fragment"}:
-        cloned = node.clone_node(deep=True)
-        apply_compiled_transforms(cloned, compiled, errors=None)
-        _sanitize_rawtext_element_contents(cloned, policy=policy, errors=None)
-        return cloned
-
-    from .node import DocumentFragment  # noqa: PLC0415
-
-    wrapper = DocumentFragment()
-    wrapper.append_child(node.clone_node(deep=True))
-    apply_compiled_transforms(wrapper, compiled, errors=None)
-    _sanitize_rawtext_element_contents(wrapper, policy=policy, errors=None)
-
-    children = cast("list[Any]", wrapper.children)
-    if len(children) == 1:
-        only = children[0]
-        only.parent = None
-        wrapper.children = []
-        return only
-
-    return wrapper
+    pass
 
 
 def sanitize_dom(

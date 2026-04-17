@@ -113,10 +113,7 @@ def _escape_js_string(value: str, *, quote: str = '"') -> str:
 
 
 def _escape_url_value(value: str) -> str:
-    if not value:
-        return ""
-    # Preserve common URL separators while percent-encoding other characters.
-    return url_quote(value, safe="/:@?&=#+-._~")
+    pass
 
 
 def _choose_attr_quote(value: str | None, forced_quote_char: str | None = None) -> str:

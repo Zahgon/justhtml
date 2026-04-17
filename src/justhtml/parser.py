@@ -60,35 +60,11 @@ class JustHTML:
         *,
         default_policy: SanitizationPolicy,
     ) -> SanitizationPolicy | None:
-        from .transforms import Sanitize, _iter_flattened_transforms  # noqa: PLC0415
-
-        flattened = _iter_flattened_transforms(transforms)
-        if not flattened:
-            return None
-
-        last = flattened[-1]
-        if not isinstance(last, Sanitize) or not last.enabled:
-            return None
-
-        return last.policy or default_policy
+        pass
 
     @staticmethod
     def _has_foreign_nodes(root: Node) -> bool:
-        stack: list[Node] = [root]
-        while stack:
-            current = stack.pop()
-            if current.namespace not in {None, "html"}:
-                return True
-
-            template_content = getattr(current, "template_content", None)
-            if template_content is not None:
-                stack.append(template_content)
-
-            children = current.children
-            if children:
-                stack.extend(reversed(children))
-
-        return False
+        pass
 
     @staticmethod
     def _stabilize_terminal_sanitize_once(
@@ -100,17 +76,7 @@ class JustHTML:
         scripting_enabled: bool,
         errors: list[ParseError],
     ) -> Node:
-        from .sanitize import sanitize_dom  # noqa: PLC0415
-
-        reparsed = JustHTML(
-            html,
-            sanitize=False,
-            fragment_context=fragment_context,
-            iframe_srcdoc=iframe_srcdoc,
-            scripting_enabled=scripting_enabled,
-        )
-        sanitize_dom(reparsed.root, policy=policy, errors=errors)
-        return reparsed.root
+        pass
 
     def __init__(
         self,
@@ -341,26 +307,17 @@ class JustHTML:
     @staticmethod
     def escape_js_string(value: str, *, quote: str = '"') -> str:
         """Escape a value for safe inclusion in a JavaScript string literal."""
-        from .serialize import _escape_js_string  # noqa: PLC0415
-
-        return _escape_js_string(value, quote=quote)
+        pass
 
     @staticmethod
     def escape_attr_value(value: str, *, quote: str = '"') -> str:
         """Escape a value for safe inclusion in a quoted HTML attribute value."""
-        if quote not in {'"', "'"}:
-            raise ValueError("quote must be ' or \"")
-
-        from .serialize import _escape_attr_value  # noqa: PLC0415
-
-        return _escape_attr_value(value, quote)
+        pass
 
     @staticmethod
     def escape_url_value(value: str) -> str:
         """Percent-encode a URL value (useful before embedding into non-URL contexts)."""
-        from .serialize import _escape_url_value  # noqa: PLC0415
-
-        return _escape_url_value(value)
+        pass
 
     @staticmethod
     def clean_url_value(*, value: str, url_rule: UrlRule) -> str | None:
@@ -369,39 +326,12 @@ class JustHTML:
         This is URL *cleaning* (allowlisting, scheme/host checks, optional proxying),
         not URL escaping. It returns `None` if the URL is disallowed.
         """
-        if not isinstance(url_rule, UrlRule):
-            raise TypeError("url_rule must be a UrlRule")
-
-        # Keep consistent validation with UrlPolicy.__post_init__ for proxy rules.
-        if url_rule.handling == "proxy" and url_rule.proxy is None:
-            raise ValueError("UrlRule.handling='proxy' requires a per-rule UrlRule.proxy")
-
-        if "&" in value:
-            from .entities import decode_entities_in_text  # noqa: PLC0415
-
-            # Match HTML attribute parsing so the helper cannot accept a URL that
-            # only turns into a disallowed scheme after embedding into markup.
-            value = decode_entities_in_text(value, in_attribute=True)
-
-        cleaned = _sanitize_url_value_with_rule(
-            rule=url_rule,
-            value=value,
-            tag="*",
-            attr="*",
-            handling=url_rule.handling if url_rule.handling is not None else "allow",
-            allow_relative=url_rule.allow_relative if url_rule.allow_relative is not None else True,
-            proxy=url_rule.proxy,
-            url_filter=None,
-            apply_filter=False,
-        )
-        if cleaned is None:
-            return None
-        return JustHTML.escape_url_value(cleaned)
+        pass
 
     @staticmethod
     def escape_url_in_js_string(value: str, *, quote: str = '"') -> str:
         """Escape a URL value for inclusion in a JavaScript string literal."""
-        return JustHTML.escape_js_string(JustHTML.escape_url_value(value), quote=quote)
+        pass
 
     @staticmethod
     def clean_url_in_js_string(
@@ -414,11 +344,7 @@ class JustHTML:
 
         Returns `None` if the URL is disallowed by the policy.
         """
-        cleaned = JustHTML.clean_url_value(value=value, url_rule=url_rule)
-        if cleaned is None:
-            return None
-        # cleaned is already percent-encoded by clean_url_value
-        return JustHTML.escape_js_string(cleaned, quote=quote)
+        pass
 
     @staticmethod
     def escape_html_text_in_js_string(value: str, *, quote: str = '"') -> str:
@@ -427,9 +353,7 @@ class JustHTML:
         This produces a JS-string-safe value that, when assigned to innerHTML,
         will be interpreted as text (not markup).
         """
-        from .serialize import _escape_text  # noqa: PLC0415
-
-        return JustHTML.escape_js_string(_escape_text(value), quote=quote)
+        pass
 
     def query(self, selector: str) -> list[Any]:
         """Query the document using a CSS selector. Delegates to root.query()."""
@@ -437,22 +361,11 @@ class JustHTML:
 
     def query_one(self, selector: str) -> Any | None:
         """Return the first matching descendant for a CSS selector, or None."""
-        return self.root.query_one(selector)
+        pass
 
     @staticmethod
     def _sorted_errors(errors: list[ParseError]) -> list[ParseError]:
-        indexed_errors = enumerate(errors)
-        return [
-            e
-            for _, e in sorted(
-                indexed_errors,
-                key=lambda t: (
-                    t[1].line if t[1].line is not None else 1_000_000_000,
-                    t[1].column if t[1].column is not None else 1_000_000_000,
-                    t[0],
-                ),
-            )
-        ]
+        pass
 
     def to_html(
         self,

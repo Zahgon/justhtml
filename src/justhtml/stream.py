@@ -29,38 +29,11 @@ class StreamSink:
 
     def process_token(self, token: Tag | CommentToken | DoctypeToken | Any) -> int:
         # Tokenizer reuses token objects, so we must copy data
-        if isinstance(token, Tag):
-            # Copy tag data
-            self.tokens.append(
-                (
-                    "start" if token.kind == Tag.START else "end",
-                    (token.name, token.attrs.copy()) if token.kind == Tag.START else token.name,
-                )
-            )
-            # Maintain open_elements stack for tokenizer's rawtext checks
-            if token.kind == Tag.START:
-                # We need a dummy object with namespace for tokenizer checks
-                # Tokenizer checks: stack[-1].namespace
-                # We can just use a simple object
-                self.open_elements.append(_DummyNode())
-            else:  # Tag.END
-                if self.open_elements:
-                    self.open_elements.pop()
-                # If open_elements is empty, we ignore the end tag for rawtext tracking purposes
-                # (it's an unmatched end tag at the root level)
-
-        elif isinstance(token, CommentToken):
-            self.tokens.append(("comment", token.data))
-
-        elif isinstance(token, DoctypeToken):
-            dt = token.doctype
-            self.tokens.append(("doctype", (dt.name, dt.public_id, dt.system_id)))
-
-        return 0  # TokenSinkResult.Continue
+        pass
 
     def process_characters(self, data: str) -> None:
         """Handle character data from tokenizer."""
-        self.tokens.append(("text", data))
+        pass
 
 
 def stream(

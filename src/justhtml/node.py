@@ -429,21 +429,19 @@ class Node:
     @property
     def origin_offset(self) -> int | None:
         """Best-effort origin offset (0-indexed) in the source HTML, if known."""
-        return self._origin_pos
+        pass
 
     @property
     def origin_line(self) -> int | None:
-        return self._origin_line
+        pass
 
     @property
     def origin_col(self) -> int | None:
-        return self._origin_col
+        pass
 
     @property
     def origin_location(self) -> tuple[int, int] | None:
-        if self._origin_line is None or self._origin_col is None:
-            return None
-        return (self._origin_line, self._origin_col)
+        pass
 
     def remove_child(self, node: Any) -> None:
         if self.children is not None:
@@ -480,10 +478,7 @@ class Node:
 
     def query_one(self, selector: str) -> Any | None:
         """Return the first matching descendant for a CSS selector, or None."""
-        matches = self.query(selector)
-        if not matches:
-            return None
-        return matches[0]
+        pass
 
     @property
     def text(self) -> str:
@@ -564,19 +559,7 @@ class Node:
         Raises:
             ValueError: If reference_node is not a child of this node
         """
-        if self.children is None:
-            raise ValueError(f"Node {self.name} cannot have children")
-
-        if reference_node is None:
-            self.append_child(node)
-            return
-
-        try:
-            index = self.children.index(reference_node)
-            self.children.insert(index, node)
-            node.parent = self
-        except ValueError:
-            raise ValueError("Reference node is not a child of this node") from None
+        pass
 
     def replace_child(self, new_node: Any, old_node: Any) -> Any:
         """
@@ -592,18 +575,7 @@ class Node:
         Raises:
             ValueError: If old_node is not a child of this node
         """
-        if self.children is None:
-            raise ValueError(f"Node {self.name} cannot have children")
-
-        try:
-            index = self.children.index(old_node)
-        except ValueError:
-            raise ValueError("The node to be replaced is not a child of this node") from None
-
-        self.children[index] = new_node
-        new_node.parent = self
-        old_node.parent = None
-        return old_node
+        pass
 
     def has_child_nodes(self) -> bool:
         """Return True if this node has children."""
@@ -835,21 +807,19 @@ class Text:
     @property
     def origin_offset(self) -> int | None:
         """Best-effort origin offset (0-indexed) in the source HTML, if known."""
-        return self._origin_pos
+        pass
 
     @property
     def origin_line(self) -> int | None:
-        return self._origin_line
+        pass
 
     @property
     def origin_col(self) -> int | None:
-        return self._origin_col
+        pass
 
     @property
     def origin_location(self) -> tuple[int, int] | None:
-        if self._origin_line is None or self._origin_col is None:
-            return None
-        return (self._origin_line, self._origin_col)
+        pass
 
     @property
     def text(self) -> str:
@@ -880,7 +850,7 @@ class Text:
     @property
     def children(self) -> list[Any]:
         """Return empty list for Text (leaf node)."""
-        return []
+        pass
 
     def has_child_nodes(self) -> bool:
         """Return False for Text."""

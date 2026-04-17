@@ -120,7 +120,7 @@ class LinkifyConfig:
 
     @staticmethod
     def with_extra_tlds(extra_tlds: list[str] | tuple[str, ...] | set[str] | frozenset[str]) -> LinkifyConfig:
-        return LinkifyConfig(extra_tlds=frozenset(str(t).lower() for t in extra_tlds))
+        pass
 
 
 def _is_valid_ipv4(host: str) -> bool:
